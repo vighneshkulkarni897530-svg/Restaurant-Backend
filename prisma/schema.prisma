@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("STAFF") // ADMIN, STAFF, CHEF
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Table {
+  id          String       @id @default(uuid())
+  tableNumber String       @unique
+  qrToken     String       @unique
+  capacity    Int          @default(4)
+  section     String       @default("Main Dining") // Main Dining, Garden Terrace, Rooftop, VIP Lounge
+  status      String       @default("ACTIVE") // ACTIVE, OCCUPIED, RESERVED, INACTIVE
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  orders      Order[]
+  waiterCalls WaiterCall[]
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  icon        String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  menuItems   MenuItem[]
+}
+
+model MenuItem {
+  id                 String      @id @default(uuid())
+  categoryId         String
+  name               String
+  description        String?
+  price              Float
+  imageUrl           String?
+  isVeg              Boolean     @default(true)
+  isAvailable        Boolean     @default(true)
+  isChefSpecial      Boolean     @default(false)
+  spicyLevel         Int         @default(0) // 0: None, 1: Mild, 2: Medium, 3: Hot
+  preparationTimeMin Int         @default(15)
+  calories           Int?
+  sortOrder          Int         @default(0)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  category           Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems         OrderItem[]
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  orderNumber    String      @unique
+  tableId        String
+  customerName   String?
+  customerPhone  String?
+  notes          String?
+  status         String      @default("NEW") // NEW, ACCEPTED, PREPARING, READY, SERVED, COMPLETED, CANCELLED
+  paymentStatus  String      @default("PENDING") // PENDING, PAID, FAILED
+  subtotal       Float       @default(0)
+  tax            Float       @default(0)
+  serviceCharge  Float       @default(0)
+  total          Float       @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  table          Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  items          OrderItem[]
+  payment        Payment?
+}
+
+model OrderItem {
+  id                  String   @id @default(uuid())
+  orderId             String
+  menuItemId          String
+  name                String
+  quantity            Int      @default(1)
+  unitPrice           Float
+  itemTotal           Float
+  specialInstructions String?
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem            MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  orderId           String   @unique
+  provider          String   @default("ONLINE_RAZORPAY") // ONLINE_RAZORPAY, CASH, UPI, CARD
+  providerOrderId   String?
+  providerPaymentId String?
+  amount            Float
+  status            String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  paymentMethod     String?  // UPI, Card, NetBanking, Cash
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model WaiterCall {
+  id          String   @id @default(uuid())
+  tableId     String
+  requestType String   @default("CALL_WAITER") // CALL_WAITER, WATER_REFILL, CLEAN_TABLE, REQUEST_BILL
+  status      String   @default("PENDING") // PENDING, ATTENDED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  table       Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+}
+
+model HotelSetting {
+  id                   String   @id @default("default")
+  hotelName            String   @default("The Grand Heritage Hotel & Dine")
+  tagline              String   @default("Exquisite Culinary Delights & Seamless Dining")
+  logoUrl              String?
+  address              String   @default("108 Royal Avenue, Luxury Boulevard, Metro City")
+  phone                String   @default("+91 98765 43210")
+  email                String   @default("concierge@grandheritage.com")
+  currencySymbol       String   @default("₹")
+  taxRatePercent       Float    @default(5.0)
+  serviceChargePercent Float    @default(2.5)
+  wifiSsid             String   @default("GrandHeritage_Guest_5G")
+  wifiPassword         String   @default("DineWithUs2026")
+  enableOnlinePayment  Boolean  @default(true)
+  enableCashPayment    Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+}
