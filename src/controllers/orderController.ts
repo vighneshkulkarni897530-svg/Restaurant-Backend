@@ -44,7 +44,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     // Validate availability and calculate subtotal
     let subtotal = 0;
-    const orderItemsData = [];
+    const orderItemsData: any[] = [];
 
     for (const item of items) {
       const dbItem = itemMap.get(item.menuItemId);
