@@ -62,6 +62,8 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
+import { ensureDatabaseInitialized } from './lib/bootstrap';
+
 // Global Error Handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled API Error:', err);
@@ -71,11 +73,14 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-server.listen(Number(PORT), '0.0.0.0', () => {
+server.listen(Number(PORT), '0.0.0.0', async () => {
   console.log(`=======================================================`);
   console.log(`🏨 Hotel QR Ordering Backend Server running on port ${PORT}`);
   console.log(`🔗 Local API: http://localhost:${PORT}/api`);
   console.log(`📱 LAN Network API: http://0.0.0.0:${PORT}/api (accessible via PC's Wi-Fi/LAN IP)`);
   console.log(`⚡ Real-time Socket.IO Server active`);
   console.log(`=======================================================`);
+  
+  // Safe auto-initialization of tables, menu items & settings without wiping any customer orders
+  await ensureDatabaseInitialized();
 });
