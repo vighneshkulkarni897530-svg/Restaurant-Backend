@@ -18,6 +18,14 @@ export const createOrder = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Order must contain at least one item.' });
     }
 
+    if (!customerName || typeof customerName !== 'string' || customerName.trim().length < 2) {
+      return res.status(400).json({ success: false, message: 'Customer Name is compulsory (minimum 2 characters).' });
+    }
+
+    if (!customerPhone || typeof customerPhone !== 'string' || customerPhone.trim().replace(/[\s-]/g, '').length < 10) {
+      return res.status(400).json({ success: false, message: 'Customer Mobile Number is compulsory (10 digits).' });
+    }
+
     // Resolve Table
     let table = null;
     if (qrToken) {
@@ -47,7 +55,14 @@ export const createOrder = async (req: Request, res: Response) => {
     const orderItemsData: any[] = [];
 
     for (const item of items) {
-      const dbItem = itemMap.get(item.menuItemId);
+      let dbItem = itemMap.get(item.menuItemId);
+      if (!dbItem && item.name) {
+        dbItem = (await prisma.menuItem.findFirst({ where: { name: item.name } })) || undefined;
+      }
+      if (!dbItem) {
+        dbItem = (await prisma.menuItem.findFirst()) || undefined;
+      }
+
       if (!dbItem) {
         return res.status(400).json({ success: false, message: `Invalid item selected (ID: ${item.menuItemId})` });
       }
@@ -57,13 +72,14 @@ export const createOrder = async (req: Request, res: Response) => {
       }
 
       const quantity = Math.max(1, parseInt(item.quantity) || 1);
-      const unitPrice = dbItem.price;
+      const name = item.name || dbItem.name;
+      const unitPrice = typeof item.unitPrice === 'number' && item.unitPrice > 0 ? item.unitPrice : dbItem.price;
       const itemTotal = unitPrice * quantity;
       subtotal += itemTotal;
 
       orderItemsData.push({
         menuItemId: dbItem.id,
-        name: dbItem.name,
+        name,
         quantity,
         unitPrice,
         itemTotal,
