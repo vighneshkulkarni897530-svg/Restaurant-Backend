@@ -53,12 +53,68 @@ app.use('/api/waiter', waiterRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingRoutes);
 
+import os from 'os';
+
+export function getLocalIpAddresses(): { name: string; ip: string; isWifi: boolean; isHotspot: boolean }[] {
+  const interfaces = os.networkInterfaces();
+  const results: { name: string; ip: string; isWifi: boolean; isHotspot: boolean }[] = [];
+
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        const lower = name.toLowerCase();
+        const isHotspot = iface.address.startsWith('192.168.137.') || lower.includes('hotspot') || lower.includes('wi-fi 3') || lower.includes('virtual');
+        const isWifi = lower.includes('wi-fi') || lower.includes('wlan') || lower.includes('wireless') || isHotspot;
+        
+        let displayName = name;
+        if (isHotspot) {
+          displayName = `Mobile Hotspot (${iface.address})`;
+        } else if (isWifi) {
+          displayName = `Wi-Fi Network (${iface.address})`;
+        } else {
+          displayName = `Ethernet / LAN (${iface.address})`;
+        }
+
+        results.push({
+          name: displayName,
+          ip: iface.address,
+          isWifi,
+          isHotspot,
+        });
+      }
+    }
+  }
+
+  // Sort real Wi-Fi first, then other LAN, then Hotspot
+  results.sort((a, b) => {
+    if (a.isWifi && !a.isHotspot) return -1;
+    if (b.isWifi && !b.isHotspot) return 1;
+    if (!a.isHotspot && b.isHotspot) return -1;
+    if (a.isHotspot && !b.isHotspot) return 1;
+    return 0;
+  });
+
+  return results;
+}
+
 // Health Check
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'online',
     system: 'Hotel QR Table Ordering System API',
     timestamp: new Date().toISOString(),
+  });
+});
+
+// Network IP Discovery for Mobile QR Standees
+app.get('/api/network-ip', (req: Request, res: Response) => {
+  const ips = getLocalIpAddresses();
+  const preferred = ips.find((i) => i.isWifi && !i.isHotspot)?.ip || ips[0]?.ip || '10.230.94.1';
+  res.status(200).json({
+    success: true,
+    preferredIp: preferred,
+    frontendUrl: `http://${preferred}:3000`,
+    interfaces: ips,
   });
 });
 
