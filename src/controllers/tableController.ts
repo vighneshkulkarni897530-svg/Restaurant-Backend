@@ -177,7 +177,7 @@ export const getTableQRCode = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Table not found' });
     }
 
-    const frontendUrl = (process.env.CUSTOMER_URL || process.env.FRONTEND_URL || 'https://restaurant-frontend-smoky.vercel.app').replace(/\/$/, '');
+    const frontendUrl = (process.env.CUSTOMER_URL || process.env.FRONTEND_URL || 'https://restaurant-frontend-tau-liart.vercel.app').replace(/\/$/, '');
     const menuUrl = `${frontendUrl}/menu?table=${table.qrToken}`;
 
     // Generate high-resolution QR Code Data URL
